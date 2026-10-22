@@ -1,0 +1,55 @@
+@startuml
+package "Capa de Presentación (Frontend Tailwind)" as UI_Layer {
+    [Vista Login]
+    [Vista Proveedores]
+    [Vista Compras]
+    [Vista Inventario]
+    [Vista Cuentas por Pagar]
+}
+
+package "Capa de Enrutamiento (API Express)" as Route_Layer {
+    [authRoutes.js]
+    [proveedorRoutes.js]
+    [compraRoutes.js]
+    [inventarioRoutes.js]
+    [cuentasPagarRoutes.js]
+}
+
+package "Capa de Controladores" as Controller_Layer {
+    [authController.js]
+    [proveedorController.js]
+    [compraController.js]
+    [inventarioController.js]
+    [cuentasPagarController.js]
+}
+
+package "Capa de Servicios (Lógica de Negocio)" as Service_Layer {
+    [authService.js]
+    [proveedorService.js]
+    [compraService.js]
+    [inventarioService.js]
+    [cuentasPagarService.js]
+}
+
+package "Capa de Modelos (Persistencia Data Access)" as Model_Layer {
+    [usuarioModel.js]
+    [proveedorModel.js]
+    [productoModel.js]
+    [compraModel.js]
+    [inventarioModel.js]
+    [cuentasPagarModel.js]
+}
+
+package "Configuración y Base de Datos" as Config_Layer {
+    [database.js]
+    database "MySQL (farmacia_galeno_api)" as DB
+}
+
+' Dependencias entre paquetes (Muestra la arquitectura en capas)
+UI_Layer ..> Route_Layer : Peticiones HTTP / JSON
+Route_Layer ..> Controller_Layer : Delega solicitudes
+Controller_Layer ..> Service_Layer : Invoca lógica de negocio
+Service_Layer ..> Model_Layer : Pide operaciones CRUD
+Model_Layer ..> Config_Layer : Ejecuta queries
+Config_Layer ..> DB : Conexión MySQL
+@enduml

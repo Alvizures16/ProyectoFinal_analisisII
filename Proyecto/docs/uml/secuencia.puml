@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor Comprador as Encargado de Compras
+    participant UI as Frontend Web (Tailwind)
+    participant API as API Node.js (App Express)
+    participant Ctrl as CompraController / Service
+    participant DB as Base de Datos MySQL
+
+    Comprador->>UI: Completa formulario de Nueva Orden (Proveedor, Productos, Cantidades)
+    UI->>API: POST /api/v1/compras (payload JSON)
+    activate API
+    API->>Ctrl: crearOrden(datosOrden)
+    activate Ctrl
+
+    Ctrl->>DB: SELECT * FROM proveedores WHERE id_proveedor = datos.proveedor_id
+    activate DB
+    DB-->>Ctrl: Proveedor válido (RN-04)
+    deactivate DB
+
+    Ctrl->>Ctrl: Validar reglas de negocio y montos (RN-05)
+
+    alt Datos de Orden Inválidos
+        Ctrl-->>API: Error de validación (HTTP 400)
+        API-->>UI: Respuesta JSON (success: false, message: "Datos inválidos")
+        UI-->>Comprador: Muestra alerta de error en pantalla
+    else Datos Válidos
+        Ctrl->>DB: INSERT INTO ordenes_compra (numero_orden, proveedor_id, estado, fecha)
+        activate DB
+        DB-->>Ctrl: ID Orden Creada
+        deactivate DB
+
+        Ctrl->>DB: INSERT INTO detalle_orden (orden_id, producto_id, cantidad, precio)
+        
+        Ctrl-->>API: Orden creada con éxito + Código Orden (RN-06)
+        deactivate Ctrl
+        API-->>UI: Respuesta HTTP 201 Created (JSON)
+        deactivate API
+        UI-->>Comprador: Muestra confirmación y asignación de Número de Orden
+    end

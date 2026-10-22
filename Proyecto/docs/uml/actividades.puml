@@ -1,0 +1,47 @@
+@startuml
+|Encargado de Compras|
+start
+:Seleccionar proveedor registrado;
+:Crear Orden de Compra con medicamentos;
+|Sistema API (Node.js)|
+:Validar datos de la orden (RN-05);
+if (¿Datos correctos?) then (sí)
+    :Generar Número Único de Orden (RN-06);
+    :Guardar orden con estado "Pendiente";
+else (no)
+    |Encargado de Compras|
+    :Notificar error en los datos;
+    stop
+endif
+
+|Encargado de Bodega / Inventario|
+:Recibir físicamente el pedido del proveedor;
+:Registrar Recepción asociada a la Orden (HU-07);
+|Sistema API (Node.js)|
+:Validar existencia de Orden de Compra (RN-07);
+
+|Encargado de Bodega / Inventario|
+:Ingresar Número de Lote y Fecha de Vencimiento (HU-08);
+|Sistema API (Node.js)|
+:Validar validez del lote y fecha (RN-08);
+:Incrementar existencias en Inventario (HU-09 / RN-09);
+
+|Encargado de Cuentas por Pagar|
+:Registrar Factura emitida por el proveedor (HU-10);
+:Vincular Factura con la Orden de Compra (HU-11 / RN-11);
+|Sistema API (Node.js)|
+:Validar coincidencia de datos (Factura vs Orden) (HU-12 / RN-12);
+if (¿Coinciden los montos y proveedor?) then (sí)
+    :Aprobar Cuenta por Pagar;
+    :Cambiar estado de Orden a "Completada";
+    |Encargado de Cuentas por Pagar|
+    :Mostrar estado "Aprobado para Pago";
+    stop
+else (no)
+    |Sistema API (Node.js)|
+    :Marcar en estado "Diferencia por Revisar";
+    |Encargado de Cuentas por Pagar|
+    :Notificar discrepancia a administración;
+    stop
+endif
+@enduml

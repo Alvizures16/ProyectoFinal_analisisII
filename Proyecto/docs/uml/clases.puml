@@ -1,0 +1,138 @@
+@startuml diagrama_clases_farmacia_galeno
+title Diagrama de clases - Sistema de Gestión de Compras Farmacias Galeno
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #444441
+  ArrowColor #444441
+}
+hide empty members
+
+class Usuario {
+  - id : int
+  - nombre : String
+  - email : String
+  - passwordHash : String
+  - rol : String
+  - estado : boolean
+  + autenticar() : boolean
+}
+
+class Categoria {
+  - id : int
+  - nombre : String
+}
+
+class Medicamento {
+  - id : int
+  - nombre : String
+  - descripcion : String
+  - precio : decimal
+  - stock : int
+  - categoria_id : int
+  - estado : boolean
+  - created_at : datetime
+  - updated_at : datetime
+}
+
+class Proveedor {
+  - id : int
+  - nombre : String
+  - nit : String
+  - telefono : String
+  - email : String
+  - direccion : String
+  - estado : boolean
+  + validarDatos() : boolean
+}
+
+class ProveedorMedicamento {
+  - proveedor_id : int
+  - medicamento_id : int
+  - precio_referencia : decimal
+}
+
+class OrdenCompra {
+  - id : int
+  - numero_orden : String
+  - proveedor_id : int
+  - usuario_id : int
+  - fecha : date
+  - estado : String
+  - total : decimal
+  + validarDatos() : boolean
+  + generarNumero() : String
+}
+
+class DetalleOrdenCompra {
+  - id : int
+  - orden_id : int
+  - medicamento_id : int
+  - cantidad : int
+  - precio_unitario : decimal
+}
+
+class Recepcion {
+  - id : int
+  - orden_id : int
+  - usuario_id : int
+  - fecha_recepcion : date
+  - observaciones : String
+}
+
+class DetalleRecepcion {
+  - id : int
+  - recepcion_id : int
+  - medicamento_id : int
+  - lote_id : int
+  - cantidad_recibida : int
+}
+
+class Lote {
+  - id : int
+  - numero_lote : String
+  - medicamento_id : int
+  - fecha_vencimiento : date
+  - cantidad_disponible : int
+  + estaVencido() : boolean
+}
+
+class Inventario {
+  - id : int
+  - medicamento_id : int
+  - existencias : int
+  - ultima_actualizacion : datetime
+  + actualizarExistencias(cantidad : int) : void
+}
+
+class Factura {
+  - id : int
+  - numero_factura : String
+  - proveedor_id : int
+  - orden_id : int
+  - fecha_emision : date
+  - monto : decimal
+  - estado_validacion : String
+  + validarContraOrden() : boolean
+}
+
+Categoria "1" --> "0..*" Medicamento : clasifica
+Proveedor "1" --> "0..*" ProveedorMedicamento : suministra
+Medicamento "1" --> "0..*" ProveedorMedicamento : ofrecido en
+Proveedor "1" --> "0..*" OrdenCompra : recibe
+Usuario "1" --> "0..*" OrdenCompra : crea
+OrdenCompra "1" *-- "1..*" DetalleOrdenCompra : contiene
+DetalleOrdenCompra "0..*" --> "1" Medicamento : solicita
+OrdenCompra "1" --> "0..*" Recepcion : origina
+Usuario "1" --> "0..*" Recepcion : registra
+Recepcion "1" *-- "1..*" DetalleRecepcion : contiene
+DetalleRecepcion "0..*" --> "1" Lote : asigna
+Lote "0..*" --> "1" Medicamento : pertenece a
+Medicamento "1" -- "1" Inventario : tiene
+Proveedor "1" --> "0..*" Factura : emite
+Factura "0..*" --> "1" OrdenCompra : respalda
+
+@enduml
