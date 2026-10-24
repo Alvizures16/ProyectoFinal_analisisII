@@ -1,0 +1,13 @@
+const express = require('express');
+const { login } = require('../controllers/authController');
+const products = require('../controllers/productController');
+const { requireAuth } = require('../middlewares/auth');
+const router = express.Router();
+router.get('/health', (req, res) => res.json({ status: 'ok', service: 'Farmacia Galeno API', version: '1.0.0' }));
+router.post('/auth/login', login);
+router.get('/productos', requireAuth, products.list);
+router.get('/productos/:id', requireAuth, products.getById);
+router.post('/productos', requireAuth, products.create);
+router.put('/productos/:id', requireAuth, products.update);
+router.delete('/productos/:id', requireAuth, products.remove);
+module.exports = router;
