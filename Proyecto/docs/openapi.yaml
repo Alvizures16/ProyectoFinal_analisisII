@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Farmacia Galeno API
+  version: 1.0.0
+  description: API REST para autenticación y administración de productos de Farmacia Galeno. Contrato API-First del Componente 3.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Entorno local
+tags:
+  - name: Autenticación
+  - name: Productos
+paths:
+  /health:
+    get:
+      summary: Verificar disponibilidad de la API
+      tags: [Productos]
+      responses:
+        '200':
+          description: API disponible
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { type: string, example: ok }, service: { type: string }, version: { type: string } } }
+  /auth/login:
+    post:
+      summary: Iniciar sesión y obtener JWT
+      tags: [Autenticación]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            example: { email: admin@galeno.local, password: cambiar123 }
+      responses:
+        '200':
+          description: Autenticación correcta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /productos:
+    get:
+      summary: Listar, buscar y filtrar productos
+      tags: [Productos]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Busca por nombre o descripción.
+        - in: query
+          name: estado
+          schema: { type: boolean }
+          description: Filtra productos activos/inactivos.
+        - in: query
+          name: categoria_id
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Lista de productos
+          headers:
+            X-Cache: { schema: { type: string, enum: [HIT, MISS] }, description: Resultado de caché }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      summary: Crear un producto
+      tags: [Productos]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductInput' }
+            example: { nombre: Vitamina C 500mg, descripcion: Frasco de ejemplo, precio: 35.5, stock: 20, categoria_id: 3, estado: true }
+      responses:
+        '201':
+          description: Producto creado
+          headers: { Location: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /productos/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: Consultar un producto por ID
+      tags: [Productos]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Producto encontrado
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductResponse' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Actualizar un producto
+      tags: [Productos]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProductInput' } } }
+      responses:
+        '200': { description: Producto actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/ProductResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Eliminar un producto
+      tags: [Productos]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Producto eliminado sin contenido }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: admin@galeno.local }
+        password: { type: string, minLength: 1, example: cambiar123 }
+    LoginResponse:
+      type: object
+      required: [token, tokenType, user]
+      properties:
+        token: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresIn: { type: string, example: 2h }
+        user: { type: object, properties: { id: { type: integer }, nombre: { type: string }, email: { type: string }, rol: { type: string } } }
+    ProductInput:
+      type: object
+      required: [nombre, precio]
+      properties:
+        nombre: { type: string, maxLength: 150, example: Vitamina C 500mg }
+        descripcion: { type: string, nullable: true, maxLength: 255 }
+        precio: { type: number, format: double, exclusiveMinimum: 0, example: 35.5 }
+        stock: { type: integer, minimum: 0, default: 0 }
+        categoria_id: { type: integer, nullable: true, minimum: 1 }
+        estado: { type: boolean, default: true }
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductInput'
+        - type: object
+          properties:
+            id: { type: integer }
+            categoria_nombre: { type: string, nullable: true }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time, nullable: true }
+    ProductResponse:
+      type: object
+      properties: { data: { $ref: '#/components/schemas/Product' }, message: { type: string } }
+    ProductListResponse:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Product' } }
+        meta: { type: object, properties: { count: { type: integer }, cached: { type: boolean } } }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri-reference, example: about:blank }
+        title: { type: string, example: Validación fallida }
+        status: { type: integer, example: 400 }
+        detail: { type: string }
+        instance: { type: string }
+        errors: { type: array, items: { type: object, properties: { field: { type: string }, message: { type: string } } } }
+  responses:
+    BadRequest:
+      description: Solicitud incorrecta (RFC 9457)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unauthorized:
+      description: No autenticado o token inválido (RFC 9457)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    NotFound:
+      description: Recurso no encontrado (RFC 9457)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Conflict:
+      description: Conflicto de unicidad (RFC 9457)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    InternalError:
+      description: Error interno (RFC 9457)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }

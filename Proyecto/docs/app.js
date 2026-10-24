@@ -1,0 +1,12 @@
+const express = require('express');
+const cors = require('cors');
+const routes = require('./routes/api');
+const { notFound, errorHandler } = require('./middlewares/problem');
+const app = express();
+app.disable('x-powered-by');
+app.use(cors());
+app.use(express.json({ limit: '100kb' }));
+app.use('/api/v1', routes);
+app.use(notFound);
+app.use(errorHandler);
+module.exports = app;
