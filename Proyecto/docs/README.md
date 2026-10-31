@@ -163,3 +163,58 @@ En otra terminal ejecuta `npm test`. Estas pruebas cubren validación de campos 
 
 ## Alcance y honestidad de implementación
 La API sí consulta y modifica MySQL directamente. La caché TTL está en memoria del proceso (no Redis), apropiada para demostrar Cache-Aside en una instancia local. GraphQL y gRPC se describen como alternativas conceptuales, no como servicios implementados. Los escenarios Gherkin están escritos, pero no automatizados con Cucumber.
+
+## 8. Interfaz modular y CRUD de Farmacia Galeno
+La interfaz de `frontend/index.html` fue reorganizada como una aplicación de una sola vista con navegación modular. Cada módulo abre su propio listado y formulario, por lo que no se convierte en una página larga. El acceso requiere autenticación real contra `POST /api/v1/auth/login`; el token se guarda en `sessionStorage` y se envía como `Authorization: Bearer ...`.
+
+### Módulos disponibles
+- **Resumen:** indicadores de productos, proveedores, órdenes, facturas pendientes, stock bajo, valor estimado del inventario y lotes próximos a vencer.
+- **Productos:** CRUD existente, conectado a `productos` y `categorias`.
+- **Categorías y proveedores:** CRUD de catálogos.
+- **Órdenes de compra:** alta con proveedor y una línea inicial de producto; consulta, edición de cabecera y eliminación solo si está pendiente o cancelada.
+- **Recepciones:** registro de la recepción de una orden.
+- **Inventario por lote:** altas, edición y eliminación de lotes; las cantidades disponibles sincronizan las existencias de `productos.stock`.
+- **Cuentas por pagar y pagos:** CRUD de facturas y pagos; el estado de la factura se recalcula cuando los pagos cubren el total.
+- **Trazabilidad:** consulta de eventos guardados en `auditoria` (solo lectura).
+
+### Instalar las tablas nuevas
+Antes de utilizar proveedores, órdenes, recepciones, lotes, facturas, pagos o auditoría, verifica qué tablas ya existen. Luego ejecuta en MySQL/MariaDB de Kali, únicamente si corresponde:
+
+```sql
+USE farmacia_galeno;
+SOURCE /ruta/completa/database/03_modulos_compras_inventario.sql;
+```
+
+El script usa `CREATE TABLE IF NOT EXISTS` y no elimina tablas ni datos existentes. Ejecuta el comando `SOURCE` desde el cliente MySQL y reemplaza la ruta por la ruta real del archivo. Si ya creaste esas tablas manualmente, compara su estructura con el archivo antes de ejecutarlo; `IF NOT EXISTS` no corrige columnas o relaciones que ya existan con otra definición.
+
+### Iniciar la aplicación
+En una terminal, desde la raíz del proyecto:
+
+```powershell
+npm install
+npm run dev
+```
+
+En otra terminal, desde la misma raíz:
+
+```powershell
+npm run frontend
+```
+
+Abre `http://localhost:5020`. El servidor frontend reenvía las llamadas `/api/...` al backend de `localhost:3000`; ambos procesos deben ejecutarse en el mismo equipo donde se inicia Node. La conexión de la API a MySQL sigue dependiendo de las variables existentes en `.env`.
+
+### Endpoints añadidos
+Todos los endpoints siguientes están bajo `/api/v1` y requieren JWT, excepto `/health` y `/auth/login`:
+
+- `GET /dashboard`
+- CRUD de `/categorias`, `/proveedores`, `/recepciones`, `/lotes`, `/facturas` y `/pagos` (`GET`, `GET /:id`, `POST`, `PUT /:id`, `DELETE /:id`).
+- `GET /ordenes-compra`, `GET /ordenes-compra/:id`, `POST /ordenes-compra`, `PUT /ordenes-compra/:id`, `DELETE /ordenes-compra/:id` y `GET /ordenes-compra/:id/detalles`.
+- `GET /auditoria` (solo lectura).
+
+La interfaz no usa datos ficticios para reemplazar las respuestas de la API. Si una tabla todavía no existe o la cuenta de MySQL no tiene permisos, el módulo muestra el error devuelto por el backend.
+
+### Consideraciones
+- El diseño sigue el archivo `DESIGN.md`: lienzo oscuro, superficies grafito/translúcidas, texto blanco cálido y gris, bordes finos, botones píldora y acento violeta solo en degradados.
+- Los módulos son navegables desde una barra lateral que se convierte en navegación inferior en móvil; el contenido y las tablas pueden desplazarse dentro del módulo cuando lo requieren, no como una página interminable.
+- El CRUD no sustituye las reglas operativas que aún deban definirse (por ejemplo, aprobación formal de órdenes, validación fiscal de facturas, permisos por rol y flujos de devolución). El backend valida campos, relaciones, autenticación y reglas básicas; prueba cada operación contra la estructura real de tu base antes de usar datos productivos.
+- El archivo `.env` no forma parte de los cambios de código realizados en esta actualización.
